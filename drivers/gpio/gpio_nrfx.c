@@ -25,6 +25,7 @@ struct gpio_nrfx_cfg {
 	NRF_GPIO_Type *port;
 	uint32_t edge_sense;
 	uint8_t port_num;
+	struct gpio_hogs hogs;
 };
 
 static inline struct gpio_nrfx_data *get_port_data(const struct device *port)
@@ -378,7 +379,7 @@ static int gpio_nrfx_init(const struct device *port)
 	IRQ_CONNECT(DT_IRQN(GPIOTE_NODE), DT_IRQ(GPIOTE_NODE, priority),
 		    nrfx_isr, nrfx_gpiote_irq_handler, 0);
 
-	return 0;
+	return gpio_hogs_init(port, &get_port_cfg(port)->hogs);
 }
 
 static const struct gpio_driver_api gpio_nrfx_drv_api_funcs = {
@@ -408,7 +409,8 @@ static const struct gpio_driver_api gpio_nrfx_drv_api_funcs = {
 		},							\
 		.port = (NRF_GPIO_Type *)DT_INST_REG_ADDR(id),		\
 		.port_num = DT_INST_PROP(id, port),			\
-		.edge_sense = DT_INST_PROP_OR(id, sense_edge_mask, 0)	\
+		.edge_sense = DT_INST_PROP_OR(id, sense_edge_mask, 0),	\
+		.hogs = GPIO_HOGS_COND_INIT_GPIO_CTLR(DT_DRV_INST(id))	\
 	};								\
 									\
 	static struct gpio_nrfx_data gpio_nrfx_p##id##_data;		\
