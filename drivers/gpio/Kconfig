@@ -51,14 +51,6 @@ config GPIO_HOGS
 	  Enable support for GPIO hogs. GPIO hogging is a mechanism for providing
 	  automatic GPIO configuration via devicetree.
 
-config GPIO_HOGS_INIT_PRIORITY
-	int "GPIO hogs init priority"
-	default 41
-	depends on GPIO_HOGS
-	help
-	  GPIO hogs initialization priority. GPIO hogs must be initialized after the
-	  GPIO controller drivers.
-
 source "drivers/gpio/Kconfig.b91"
 
 source "drivers/gpio/Kconfig.dw"

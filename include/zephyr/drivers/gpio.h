@@ -1467,6 +1467,92 @@ static inline int z_impl_gpio_get_pending_int(const struct device *dev)
 	return api->get_pending_int(dev);
 }
 
+struct gpio_hog_dt_spec {
+	gpio_pin_t pin;
+	gpio_flags_t flags;
+};
+
+struct gpio_hogs {
+	const struct gpio_hog_dt_spec *specs;
+	uint8_t num_specs;
+};
+
+/**
+ * @brief Set initial values of a gpio controller
+ *
+ * This configures a list of gpios provided in a gpio_hogs struct.  Intended use
+ * is for gpio controller's to initialize themselves from gpio-hog nodes in the
+ * devicetree.  However, it can be used outside this if one has a number of
+ * gpios on the same controller to set.
+ *
+ * @param dev The gpio controller.
+ * @param hogs The gpio hog set. Can have 0 hogs in it.
+ *
+ * @retval < 0 if at least one gpio failed to initialize.
+ * @retval 0 if all gpios initialized.
+ */
+#ifdef CONFIG_GPIO_HOGS
+int gpio_hogs_init(const struct device *port, const struct gpio_hogs *hogs);
+#else
+static inline int gpio_hogs_init(const struct device *port, const struct gpio_hogs *hogs)
+{
+	ARG_UNUSED(port);
+	ARG_UNUSED(hogs);
+	return 0;
+}
+#endif
+
+/* Static initializer for a struct gpio_hog_dt_spec */
+#define GPIO_HOG_DT_SPEC_GET_BY_IDX(node_id, idx)					\
+	{										\
+		.pin = DT_GPIO_HOG_PIN_BY_IDX(node_id, idx),				\
+		.flags = DT_GPIO_HOG_FLAGS_BY_IDX(node_id, idx) |			\
+			 (DT_PROP(node_id, input) ? GPIO_INPUT : 0) |			\
+			 (DT_PROP(node_id, output_low) ? GPIO_OUTPUT_INACTIVE : 0) |	\
+			 (DT_PROP(node_id, output_high) ? GPIO_OUTPUT_ACTIVE : 0),	\
+	}
+
+/* Expands to to 1 if node_id is a GPIO hog, empty otherwise */
+#define GPIO_HOGS_NODE_IS_GPIO_HOG(node_id)			\
+	IF_ENABLED(DT_PROP_OR(node_id, gpio_hog, 0), 1)
+
+/* Expands to 1 if GPIO controller node_id has GPIO hog children, 0 otherwise */
+#define GPIO_HOGS_GPIO_CTLR_HAS_HOGS(node_id)			\
+	COND_CODE_0(						\
+		IS_EMPTY(DT_FOREACH_CHILD_STATUS_OKAY(node_id,	\
+			GPIO_HOGS_NODE_IS_GPIO_HOG)),		\
+		(1), (0))
+
+/* Called for GPIO hog indexes */
+#define GPIO_HOGS_INIT_GPIO_HOG_BY_IDX(idx, node_id)		\
+	GPIO_HOG_DT_SPEC_GET_BY_IDX(node_id, idx)
+
+/* Called for GPIO hog dts nodes */
+#define GPIO_HOGS_INIT_GPIO_HOGS(node_id)			\
+	LISTIFY(DT_NUM_GPIO_HOGS(node_id),			\
+		GPIO_HOGS_INIT_GPIO_HOG_BY_IDX, (,), node_id),
+
+/* Called for GPIO controller dts node children */
+#define GPIO_HOGS_COND_INIT_GPIO_HOGS(node_id)				\
+	COND_CODE_0(IS_EMPTY(GPIO_HOGS_NODE_IS_GPIO_HOG(node_id)),	\
+		    (GPIO_HOGS_INIT_GPIO_HOGS(node_id)), ())
+
+/* Called for each GPIO controller dts node which has GPIO hog children */
+#define GPIO_HOGS_INIT_GPIO_CTLR(node_id)				\
+	{								\
+		.specs = (const struct gpio_hog_dt_spec []) {		\
+			DT_FOREACH_CHILD_STATUS_OKAY(node_id,		\
+				GPIO_HOGS_COND_INIT_GPIO_HOGS)		\
+		},							\
+		.num_specs = DT_FOREACH_CHILD_STATUS_OKAY_SEP(node_id,	\
+				DT_NUM_GPIO_HOGS, (+)),			\
+	}
+
+/* Called for each GPIO controller dts node */
+#define GPIO_HOGS_COND_INIT_GPIO_CTLR(node_id)			\
+	COND_CODE_1(GPIO_HOGS_GPIO_CTLR_HAS_HOGS(node_id),	\
+		   (GPIO_HOGS_INIT_GPIO_CTLR(node_id)), ({}))
+
 /**
  * @}
  */
