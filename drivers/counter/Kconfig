@@ -66,4 +66,6 @@ source "drivers/counter/Kconfig.mcp7940n"
 
 source "drivers/counter/Kconfig.mcux_ctimer"
 
+source "drivers/counter/Kconfig.rv3032"
+
 endif # COUNTER

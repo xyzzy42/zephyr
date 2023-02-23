@@ -1,0 +1,91 @@
+description: Micro Crystal RV-3032 RTC
+compatible: "microcrystal,rv3032"
+on-bus: i2c
+
+include: i2c-device.yaml
+
+properties:
+  int-gpios:
+    type: phandle-array
+    description: GPIO for interrupt pin.
+
+  evi-gpios:
+    type: phandle-array
+    description: GPIO for EVI pin, can be used to set RTC.
+
+  clkout-xtal-frequency:
+    type: int
+    enum:
+      - 32768
+      - 1024
+      - 64
+      - 1
+    description: |
+      Frequency of CLKOUT pin, using XTAL mode.  This has temperature
+      compensation for the 1 Hz - 1024 Hz frequencies.  CLKOUT will be disabled
+      if neither this nor clkout-hf-frequency are provided.
+
+  clkout-hf-frequency:
+    type: int
+    description: |
+      Clock output frequency using HF mode.  This will override
+      clkout-xtal-frequency if both are specified.
+      valid range: 8192 - 67108864 Hz, in multiples of 8192 Hz
+
+  backup-mode:
+    type: string
+    default: disabled
+    enum:
+     - disabled
+     - DSM
+     - LSM
+    description: |
+      Backup power supply switchover mode.  See datasheet §4.2, §4.3, and
+      §3.20.1.  Roughly, DSM will use whichever is the greater of Vdd or
+      Vbackup.  While LSM will prefer Vdd and only use Vbackup if Vdd drops
+      below Vth:lsm (1.8 - 2.2 V) and Vbackup is greater than Vdd.  Disabled
+      will always power from Vdd and will disable the trickle charger also.
+
+  trickle-enable:
+    type: boolean
+    description: Enable trickle charger.  Can not be enabled if backup-mode is set to disabled.
+
+  trickle-resistor-ohms:
+    type: int
+    default: 600
+    enum:
+     - 600   # Different than Linux driver
+     - 2000
+     - 7000
+     - 12000
+    description: Trickle charger current limiting resistor value.
+
+  trickle-voltage-millivolt:
+    type: int
+    enum:
+     - 1750
+     - 3000
+     - 4400
+    description: |
+      Trickle charger voltage.  See datasheet §4.3 and §3.20.1.  Ignored in DSM
+      mode, where the voltage will always be Vdd, and when backup-mode is
+      disabled, which disables the trickle charger.
+
+child-binding:
+  description: |
+    Temperature sensor, NVRAM or EEPROM child nodes.
+
+    There are three optional child nodes, with compatibles of "microcrystal,rv3032-eeprom",
+    "microcrystal,rv3032-nvram", or "microcrystal,rv3032-sensor".
+
+    Node labels of these nodes can be used to access the corresponding
+    additional functions which use different APIs.  The main device tree node
+    uses the Counter API.
+
+    Child nodes with other compatibles will be ignored and multiple nodes of the
+    same type will cause errors.  There is no way to specify this in the binding
+    yaml syntax.
+
+  properties:
+    label:
+      type: string

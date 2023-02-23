@@ -1,0 +1,16 @@
+# Copyright (c) 2023 Igor Institute, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+DT_COMPAT_RV3032 := microcrystal,rv3032
+
+config COUNTER_MICROCRYSTAL_RV3032
+	bool "Micro Crystal RV3032 RTC"
+	select I2C
+	default $(dt_compat_enabled,$(DT_COMPAT_RV3032))
+	help
+	  Enable driver for Micro Crystal RV3032 I2C based Real Time Clock.
+	  While this is a counter driver, it also support a subdevice for the
+	  temperature sensor and two eeprom devices for the NVRAM and EEPROM
+	  memory.
